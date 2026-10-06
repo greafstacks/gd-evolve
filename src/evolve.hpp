@@ -26,6 +26,7 @@ struct Shape {
     float rot = 0;               // radians, clockwise
     int hue = 0;                 // -180..180
     float sat = 0, val = 1;      // 0..1
+    int op = 0;                  // index into opacity levels
 };
 
 struct Rng {
@@ -70,8 +71,9 @@ public:
 
     // target: w*h*3 floats 0..1. unitPx = image pixels per GD unit.
     Evolver(const std::vector<Sprite>& cat, int w, int h, std::vector<float> target,
-            float unitPx, uint64_t seed = 1)
-        : cat_(cat), W(w), H(h), T(std::move(target)), unitPx_(unitPx), rng_(seed) {
+            float unitPx, uint64_t seed = 1, std::vector<float> ops = {1.0f})
+        : cat_(cat), W(w), H(h), T(std::move(target)), unitPx_(unitPx), rng_(seed), ops_(std::move(ops)) {
+        if (ops_.empty()) ops_ = {1.0f};
         cur_.assign((size_t)W * H * 3, 0.f);
         err_.resize((size_t)W * H);
         for (size_t i = 0; i < err_.size(); i++) err_[i] = pix(i);
@@ -121,18 +123,27 @@ public:
 
     // GD level objects. White channel (1011) + HSV: hue shift, ADDITIVE
     // saturation (checkbox on), brightness multiplier.
-    std::string toObjectString(float ox, float oy) const {
+    // opChanBase: first custom colour channel used for translucent objects.
+    // Translucent objects need Color triggers (emitted here) to set those
+    // channels to white + opacity; they only show when the level is played.
+    std::string toObjectString(float ox, float oy, int opChanBase = 990) const {
         std::string out; char buf[400];
         static const int layers[7] = {-3, -1, 1, 3, 5, 7, 9}; // B4..T3
         int n = (int)shapes.size(), per = std::max(1, (n + 6) / 7);
         for (int i = 0; i < n; i++) {
             const Shape& s = shapes[i]; const Sprite& sp = cat_[s.spr];
             int layer = layers[std::min(6, i / per)], z = i % per;
+            int chan = s.op == 0 ? 1011 : opChanBase + s.op - 1;
             std::snprintf(buf, sizeof buf,
-                "1,%d,2,%.2f,3,%.2f,6,%.2f,128,%.3f,129,%.3f,21,1011,22,1011,41,1,42,1,"
+                "1,%d,2,%.2f,3,%.2f,6,%.2f,128,%.3f,129,%.3f,21,%d,22,%d,41,1,42,1,"
                 "43,%da%.2fa%.2fa1a0,44,%da%.2fa%.2fa1a0,24,%d,25,%d;",
                 sp.id, ox + s.cx / unitPx_, oy + (H - s.cy) / unitPx_, std::fmod(s.rot * 57.29578f + 360.f, 360.f),
-                s.sx, s.sy, s.hue, s.sat, s.val, s.hue, s.sat, s.val, layer, z);
+                s.sx, s.sy, chan, chan, s.hue, s.sat, s.val, s.hue, s.sat, s.val, layer, z);
+            out += buf;
+        }
+        for (size_t k = 1; k < ops_.size(); k++) {
+            std::snprintf(buf, sizeof buf, "1,899,2,%.1f,3,%.1f,7,255,8,255,9,255,10,0,23,%d,35,%.2f;",
+                          ox, oy + H / unitPx_ + 60.f, opChanBase + (int)k - 1, ops_[k]);
             out += buf;
         }
         return out;
@@ -144,6 +155,7 @@ private:
     std::vector<float> T, cur_, err_;
     float unitPx_;
     Rng rng_;
+    std::vector<float> ops_;  // opacity levels, [0] should be 1.0
 
     float pix(size_t i) const {
         float d0 = T[i*3] - cur_[i*3], d1 = T[i*3+1] - cur_[i*3+1], d2 = T[i*3+2] - cur_[i*3+2];
@@ -165,6 +177,7 @@ private:
         const Sprite& sp = cat_[s.spr];
         float wx = sp.box * s.sx * unitPx_, wy = sp.box * s.sy * unitPx_;
         float c = std::cos(s.rot), sn = std::sin(s.rot);
+        const float opa = ops_[std::min((size_t)s.op, ops_.size() - 1)];
         for (int y = b.y0; y < b.y1; y++)
             for (int x = b.x0; x < b.x1; x++) {
                 float dx = x + 0.5f - s.cx, dy = y + 0.5f - s.cy;
@@ -172,7 +185,7 @@ private:
                 float tx = u / wx + 0.5f, ty = v / wy + 0.5f;
                 if (tx < 0 || tx >= 1 || ty < 0 || ty >= 1) continue;
                 int idx = (int)(ty * sp.n) * sp.n + (int)(tx * sp.n);
-                float a = sp.alpha[idx] * (1.f / 255.f);
+                float a = sp.alpha[idx] * (1.f / 255.f) * opa;
                 if (a < 0.03f) continue;
                 f(y * W + x, a, sp.gray[idx] * (1.f / 255.f));
             }
@@ -224,6 +237,7 @@ private:
 
     Shape randomShape(float p) {
         Shape s; s.spr = rng_.below((int)cat_.size());
+        s.op = rng_.below((int)ops_.size());
         // aim at where the picture is still wrong
         int bx = 0, by = 0; float be = -1;
         for (int k = 0; k < 8; k++) {
@@ -244,12 +258,13 @@ private:
     Shape mutate(Shape s, float p) {
         float mx = (float)std::max(W, H);
         float step = std::max(1.f, mx * 0.1f * (1 - p));
-        switch (rng_.below(7)) {
+        switch (rng_.below(ops_.size() > 1 ? 8 : 7)) {
             case 0: case 1: s.cx += rng_.gauss() * step; s.cy += rng_.gauss() * step; break;
             case 2: s.sx *= std::exp(rng_.gauss() * 0.15f); break;
             case 3: s.sy *= std::exp(rng_.gauss() * 0.15f); break;
             case 4: { float f = std::exp(rng_.gauss() * 0.15f); s.sx *= f; s.sy *= f; } break;
             case 5: s.rot += rng_.gauss() * 0.35f; break;
+            case 7: s.op = rng_.below((int)ops_.size()); break;
             default: if (rng_.uni() < 0.5f) {  // swap to another object, keep footprint
                 const Sprite& o = cat_[s.spr];
                 s.spr = rng_.below((int)cat_.size());

@@ -12,11 +12,99 @@
   "developer": "greafstacks",
   "description": "Recreates an image from real GD objects using evolution (random object ID, hue, saturation, brightness, size, rotation, position, z order).",
   "settings": {
-    "count": { "type": "int", "name": "Object count", "default": 1500, "min": 10, "max": 20000 },
-    "width": { "type": "int", "name": "Image width (GD units)", "default": 900, "min": 60, "max": 30000 },
-    "res": { "type": "int", "name": "Working resolution (px, longest side)", "default": 96, "min": 32, "max": 256 },
-    "ids": { "type": "string", "name": "Object IDs to use", "default": "1-1000", "description": "Ranges like 1-200,211,1764-1800" },
-    "origin-x": { "type": "int", "name": "Origin X", "default": 15 },
-    "origin-y": { "type": "int", "name": "Origin Y", "default": 15 }
+    "count": {
+      "type": "int",
+      "name": "Object count",
+      "default": 3000,
+      "min": 10,
+      "max": 20000
+    },
+    "width": {
+      "type": "int",
+      "name": "Image width (GD units)",
+      "default": 900,
+      "min": 60,
+      "max": 30000
+    },
+    "res": {
+      "type": "int",
+      "name": "Working resolution (px, longest side)",
+      "default": 128,
+      "min": 32,
+      "max": 384
+    },
+    "ids": {
+      "type": "string",
+      "name": "Object IDs to use",
+      "default": "1-1000",
+      "description": "Ranges like 1-200,211,1764-1800"
+    },
+    "origin-x": {
+      "type": "int",
+      "name": "Origin X",
+      "default": 15
+    },
+    "origin-y": {
+      "type": "int",
+      "name": "Origin Y",
+      "default": 15
+    },
+    "time-limit": {
+      "type": "int",
+      "name": "Time limit (seconds, 0 = none)",
+      "description": "Stops when the time OR the object count is reached, whichever is first.",
+      "default": 120,
+      "min": 0,
+      "max": 7200
+    },
+    "simple-shapes": {
+      "type": "bool",
+      "name": "Only simple shapes",
+      "description": "Skip gears, chains and other complex objects.",
+      "default": true
+    },
+    "complexity": {
+      "type": "int",
+      "name": "Shape complexity limit",
+      "description": "Higher allows more complex objects. Squares are ~16, triangles ~21.",
+      "default": 36,
+      "min": 10,
+      "max": 300
+    },
+    "bg": {
+      "type": "string",
+      "name": "Transparent background colour",
+      "description": "Hex colour used where the image is transparent.",
+      "default": "FFFFFF"
+    },
+    "opacity-levels": {
+      "type": "int",
+      "name": "Opacity levels (1 = off)",
+      "description": "2-4 adds translucent objects (better blending). Uses Color triggers, so opacity shows when you play the level, not in the editor.",
+      "default": 1,
+      "min": 1,
+      "max": 4
+    },
+    "opacity-channel": {
+      "type": "int",
+      "name": "First colour channel for opacity",
+      "default": 990,
+      "min": 1,
+      "max": 990
+    },
+    "candidates": {
+      "type": "int",
+      "name": "Candidates per object",
+      "default": 40,
+      "min": 5,
+      "max": 400
+    },
+    "climbs": {
+      "type": "int",
+      "name": "Refinement steps per object",
+      "default": 80,
+      "min": 0,
+      "max": 800
+    }
   }
 }
