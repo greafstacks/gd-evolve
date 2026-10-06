@@ -14,6 +14,19 @@ else()
     message(STATUS "Found Geode: $ENV{GEODE_SDK}")
 endif()
 
-add_compile_definitions(FMT_USE_CONSTEVAL=0 FMT_CONSTEVAL=)
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
+
+function(gdevo_patch_fmt)
+    file(GLOB fmt_headers
+        "${CMAKE_SOURCE_DIR}/cpm-cache/fmt/*/include/fmt/core.h"
+        "${CMAKE_SOURCE_DIR}/cpm-cache/fmt/*/include/fmt/base.h")
+    foreach(h ${fmt_headers})
+        file(READ "${h}" c)
+        string(REPLACE "define FMT_CONSTEVAL consteval" "define FMT_CONSTEVAL" c "${c}")
+        file(WRITE "${h}" "${c}")
+        message(STATUS "gd-evolve: patched ${h}")
+    endforeach()
+endfunction()
+cmake_language(DEFER CALL gdevo_patch_fmt)
+
 setup_geode_mod(${PROJECT_NAME})
