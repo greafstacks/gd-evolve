@@ -1,0 +1,22 @@
+{
+  "geode": "4.0.0",
+  "gd": {
+    "win": "2.2081",
+    "android": "2.2081",
+    "mac": "2.2081",
+    "ios": "2.2081"
+  },
+  "version": "v1.0.0",
+  "id": "greafstacks.gd-evolve",
+  "name": "GD Evolve",
+  "developer": "greafstacks",
+  "description": "Recreates an image from real GD objects using evolution (random object ID, hue, saturation, brightness, size, rotation, position, z order).",
+  "settings": {
+    "count": { "type": "int", "name": "Object count", "default": 1500, "min": 10, "max": 20000 },
+    "width": { "type": "int", "name": "Image width (GD units)", "default": 900, "min": 60, "max": 30000 },
+    "res": { "type": "int", "name": "Working resolution (px, longest side)", "default": 96, "min": 32, "max": 256 },
+    "ids": { "type": "string", "name": "Object IDs to use", "default": "1-1000", "description": "Ranges like 1-200,211,1764-1800" },
+    "origin-x": { "type": "int", "name": "Origin X", "default": 15 },
+    "origin-y": { "type": "int", "name": "Origin Y", "default": 15 }
+  }
+}
